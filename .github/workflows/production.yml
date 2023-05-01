@@ -1,0 +1,126 @@
+name: production
+
+on: [push]
+
+permissions:
+    contents: read
+    id-token: write
+
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    services:
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+          options: --health-cmd "mysqladmin ping -h localhost" --health-interval 20s --health-timeout 10s --health-retries 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: build app for test
+        uses: ./.github/actions/build
+        with:
+            APP_ENV: ${{ secrets.PRO_APP_ENV }}
+            APP_KEY: ${{ secrets.PRO_APP_KEY }}
+            APP_ENV_NAME: ".env.prd"
+            COMPOSER_INSTALL_NO_DEV: "false"
+      
+
+      - name: wait for phpunit
+        run: |
+            docker
+      - name: phpunit
+        id: phpunit
+        run: |
+            if [ ! -d ./test-results ]; then mkdir ./test-results; fi
+            ./vendor/bin/phpunit -d memory_limit=1G --stderr
+        working-directory: src
+
+
+
+  deploy:
+    runs-on: ubuntu-20.04
+    needs: test
+    if: contains(github.head_ref, 'release') || github.ref == 'refs/heads/main'
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: build app for deploy
+        uses: ./.github/actions/build
+        with:
+          APP_ENV: ${{ secrets.PRO_APP_ENV }}
+          APP_KEY: ${{ secrets.PRO_APP_KEY }}
+          APP_ENV_NAME: ".env.prd"
+          COMPOSER_INSTALL_NO_DEV: "true"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+      - name: Authorize Docker push
+        run: |
+          echo '${{ secrets.GKE_SERVICE_ACCOUNT_KEY }}' > allabout-kubernetes-service-account.json
+          gcloud auth activate-service-account --key-file allabout-kubernetes-service-account.json
+          gcloud auth configure-docker us-east1-docker.pkg.dev
+      - name: setup docker env
+        run: |
+          echo "REPOSITORY_NAME=${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ github.sha }}-${{ github.run_number }}" >> $GITHUB_ENV
+      - name: docker build and push
+        uses: docker/build-push-action@v3.2.0
+        with:
+          context: .
+          push: true
+          file: cd/${{ secrets.PRO_APP_ENV }}/php/Dockerfile
+          build-args: |
+            APP_ENV=${{ secrets.PRO_APP_ENV }}
+            APP_PATH=/var/www/${{ env.REPOSITORY_NAME }}
+          tags: |
+            us-east1-docker.pkg.dev/o-taiji/${{ env.REPOSITORY_NAME }}/app:latest
+            us-east1-docker.pkg.dev/o-taiji/${{ env.REPOSITORY_NAME }}/app:${{ env.IMAGE_TAG }}
+
+                
+      - name: set gke env
+        run: | 
+            echo "DEPLOYMENT_CONTAINER_IMAGE=us-east1-docker.pkg.dev/o-taiji/${{ env.REPOSITORY_NAME }}/app:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+            echo "CERT_DOMAIN=githubactions.ogawa.allabout.oootaiji.com" >> $GITHUB_ENV
+            echo "INGRESS_STATIC_IP=${{ env.REPOSITORY_NAME }}-ip" >> $GITHUB_ENV
+      - name: auth gke
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.GKE_SERVICE_ACCOUNT_KEY }}'
+      - name: auth gke
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: ${{ env.REPOSITORY_NAME }}
+          location: us-west1
+
+
+      - name: deploy gke
+        run: |
+            mkdir -p apply
+            envsubst < service.yaml > apply/service.yaml
+            envsubst < deployment.yaml > apply/deployment.yaml
+            envsubst < ingress.yaml > apply/ingress.yaml
+            envsubst < cert.yaml > apply/cert.yaml
+            envsubst < pod-disruption-budget.yaml > apply/pod-disruption-budget.yaml
+            kubectl apply -f apply/cert.yaml
+            kubectl apply -f apply/deployment.yaml
+            kubectl apply -f apply/service.yaml
+            kubectl apply -f apply/ingress.yaml
+            kubectl apply -f apply/pod-disruption-budget.yaml
+        working-directory: cd/${{ secrets.PRO_APP_ENV }}/manifest
+        env:
+            DEPLOYMENT_CONTAINER_IMAGE: ${{ env.DEPLOYMENT_CONTAINER_IMAGE }}
+            CERT_DOMAIN: ${{ env.CERT_DOMAIN }}
+            INGRESS_STATIC_IP: ${{ env.INGRESS_STATIC_IP }}
+      - name: confirm deploy
+        run: |
+            kubectl rollout status deployment web
+
+

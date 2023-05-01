@@ -1,0 +1,90 @@
+name: build
+description: common action
+
+inputs:
+  APP_KEY: 
+    required: true
+    description: 'app key'
+  APP_ENV:
+    required: false
+    description: 'app env'
+  APP_ENV_NAME:
+    required: true
+    description: 'app .env file name'
+  COMPOSER_INSTALL_NO_DEV:
+    default: "true"
+    required: true
+    description: 'use composer install --no-dev'
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: setup - package update
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git gettext
+      shell: bash
+    - name: setup - install php
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 8.0
+        extensions: mbstring, gd
+    - name: setup - install composer
+      run: |
+        composer self-update --1
+        composer --version
+      shell: bash
+    - name: setup - install node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+
+    - name: build app - laravel permission
+      run: |
+        chmod 777 -R storage
+        chmod 777 -R bootstrap/cache
+      shell: bash
+      working-directory: src
+    - name: build app - laravel env
+      run: |
+        envsubst < ${{ inputs.APP_ENV_NAME }} > .env
+      shell: bash
+      env:
+          APP_KEY: ${{ inputs.APP_KEY }}
+      working-directory: src
+    - name: build app - cache composer install
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: composer-cache-v1-${{ hashFiles('src/composer.json') }}
+        restore-keys: composer-cache-v1-
+    - name: build app - composer install
+      if: inputs.COMPOSER_INSTALL_NO_DEV != 'true' && steps.composer-cache.outputs.cache-hit != 'true'
+      run: |
+        composer config discard-changes true
+        composer install -n --prefer-dist
+      shell: bash
+      working-directory: src
+    - name: build app - composer install --no-dev
+      if: inputs.COMPOSER_INSTALL_NO_DEV == 'true'
+      run: |
+        composer config discard-changes true
+        composer install -n --prefer-dist --no-dev
+      shell: bash
+      working-directory: src
+    - name: build app - cache npm install
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: composer-cache-v1-${{ hashFiles('src/composer.json') }}
+        restore-keys: composer-cache-v1-
+    - name: build app - npm install
+      run: |
+        npm install
+        npm run prod
+      shell: bash
+      working-directory: src
+
