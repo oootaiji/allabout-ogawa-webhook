@@ -57,13 +57,11 @@ jobs:
         with:
           APP_ENV: ${{ secrets.PRO_APP_ENV }}
           APP_KEY: ${{ secrets.PRO_APP_KEY }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
           APP_ENV_NAME: ".env.prd"
           COMPOSER_INSTALL_NO_DEV: "true"
           SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
           MAIL_FROM_ADDRESS: ${{ secrets.MAIL_FROM_ADDRESS }}
           MAIL_TO_CONTACT_ADDRESS: ${{ secrets.MAIL_TO_CONTACT_ADDRESS }}
-
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
