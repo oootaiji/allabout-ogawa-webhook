@@ -167,7 +167,7 @@ https://webhook.ogawa.allabout.oootaiji.com
     - Receive Domain: mail.oootaiji.com
     - Check incoming emails for spam: `off`
     - POST the raw, full MIME message: `off`
-    - URL: `https://webhook.ogawa.allabout.oootaiji.com/receive`
+    - URL: `https://webhook.ogawa.allabout.oootaiji.com/mail/receive`
 
 ### 9. メール受信のためのDNS設定
 - mxレコードを追加
