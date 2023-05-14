@@ -37,7 +37,7 @@ class MailController extends Controller
     public function receive(Request $request)
     {
         try {
-            if ($request->to == 'noreply@mail.oootaiji.com') {
+            if (in_array('noreply@mail.oootaiji.com', $request->envelope->to)) {
                 // 転送
                 SendGrid::send(
                     config('mail.to.contact.address'),
@@ -46,7 +46,7 @@ class MailController extends Controller
                 );
                 // 自動返信
                 SendGrid::send(
-                    $request->from,
+                    $request->envelope->from,
                     "[自動返信]連絡",
                     "こちらへメールは返信できません。",
                 );
@@ -59,7 +59,7 @@ class MailController extends Controller
                 );
                 // 自動返信
                 SendGrid::send(
-                    $request->from,
+                    $request->envelope->from,
                     "[自動返信]連絡",
                     "こちらのメールは自動返信です。担当者からの返信は、しばらくお待ち下さい。",
                 );
