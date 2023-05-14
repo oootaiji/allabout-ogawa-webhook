@@ -1,27 +1,27 @@
-# allabout-ogawa-githubactions
+# allabout-ogawa-webhook
 ## 概要
-Github Actinosを触ったことがないので学習
-実務でCircleCIからGithub Actionsへ移行があるということで、移行を意識してGithub ActionsでGKEのデプロイを実施する
+SendGridのwebhookを触ったことがないので学習
+実務でメール受信機能を実装する必要がありそうなので、実践で使う前に事前に学習しておくß
 
 
 ## 成果物
 ```
 Github (README.md)
-https://github.com/oootaiji/allabout-ogawa-githubactions
+https://github.com/oootaiji/allabout-ogawa-webhook
 
 アプリ (お金かかるため、現在停止中)
-https://githubactions.ogawa.allabout.oootaiji.com
+https://webhook.ogawa.allabout.oootaiji.com
 ```
 
 
 ## 目的・要件
 ### 目的
-- 実践的学習
+- 実践的な学習
     - 商用・業務で使うことを意識する
+    - SendGridを使ってメールを受信し、それを自動返信・自動転送するまでの流れを掴むことが主軸
 - devopsの学習
     - 本番環境はdockerコンテナが動いているが、ローカル開発環境もコンテナで動くようにする
     - devopsを意識して、開発環境と本番環境の連携を容易にする
-- Github Actionsの学習が主軸
 
 ### インフラ要件
 - クラウド
@@ -39,8 +39,14 @@ https://githubactions.ogawa.allabout.oootaiji.com
     - デプロイのOSは、ubuntu20.04を使う
 
 ### アプリ要件
-- 最新Laravel (php8)
-- hello worldだけ出力
+- 非機能要件
+    - 最新Laravel (php8)
+- 機能要件
+    - メール送信機能
+    - SendGridからのWebhook
+        - メール自動転送機能
+        - メール自動返信機能 (hello worldだけ返信)
+        - 添付ファイルに対応は過剰なため、非対応にする
 
 
 ## 準備
@@ -54,14 +60,18 @@ https://githubactions.ogawa.allabout.oootaiji.com
     - gcloud
 
 ### 準備の流れ
-1. GKEの準備
+1. 下準備
 2. クラスターの作成
 3. レジストリの作成
 4. 公開用の固定IPの作成
 5. サービスアカウント(権限)JSONの作成
 6. Githubに環境変数を設定
+7. メール送信用のDNSの設定
+8. Inbound Parse Webhookの設定
+9. メール受信用のDNSの設定
 
-### 1. GKEの準備
+
+### 1. 下準備
 - GCPの Kubernetes Engine APIを有効にしておく
 
     ```
@@ -79,14 +89,14 @@ https://githubactions.ogawa.allabout.oootaiji.com
 - kubernetesクラスタ作成
 
     ```
-    cluster_name=allabout-ogawa-githubactions
-    gcloud container clusters create $cluster_name --machine-type=e2-micro --num-nodes=1 --region=us-west1
+    cluster_name=allabout-ogawa-webhook
+    gcloud container clusters create $cluster_name --machine-type=e2-micro --num-nodes=1 --zone=us-west1-a
     ```
 
 - クラスタの認証情報を取得 (このコマンドで、以下で指定したクラスターにデプロイされるようになる)
 
     ```
-    cluster_name=allabout-ogawa-githubactions
+    cluster_name=allabout-ogawa-webhook
     gcloud container clusters get-credentials $cluster_name
     ```
 
@@ -97,16 +107,16 @@ https://githubactions.ogawa.allabout.oootaiji.com
     ```
 
 ### 3. レジストリの作成
-- gcrの認証 (us-east1)
+- gcrの認証 (us-west1)
     ```
-    gcloud auth configure-docker us-east1-docker.pkg.dev
+    gcloud auth configure-docker us-west1-docker.pkg.dev
     ```
 
 - gcr作成
 
     ```
-    repo_name=allabout-ogawa-githubactions
-    gcloud artifacts repositories create $repo_name --repository-format=docker --location=us-east1
+    repo_name=allabout-ogawa-webhook
+    gcloud artifacts repositories create $repo_name --location=us-west1
     ```
 
 - gcr確認 レジストリ確認
@@ -119,21 +129,21 @@ https://githubactions.ogawa.allabout.oootaiji.com
 - 固定IP作成
 
     ```
-    solid_ip_name=allabout-ogawa-githubactions-ip
+    solid_ip_name=allabout-ogawa-webhook-ip
     gcloud compute addresses create $solid_ip_name --global
     ```
 
 - 固定IP確認
 
     ```
-    solid_ip_name=allabout-ogawa-githubactions-ip
+    solid_ip_name=allabout-ogawa-webhook-ip
     gcloud compute addresses describe $solid_ip_name --global
     ```
 
 - DNSの設定
 
     ```
-    githubactions.ogawa.allabout.oootaiji.comへ上記のIPをAレコードで追加
+    webhook.ogawa.allabout.oootaiji.comへ上記のIPをAレコードで追加
     ```
 
 ### 5. サービスアカウント(権限)JSONの作成
@@ -147,6 +157,22 @@ https://githubactions.ogawa.allabout.oootaiji.com
 - config.yamlで使う環境変数を登録
     - Laravel本番環境用の.env
     - サービスアカウントJSON
+
+### 7. メール送信のためのDNS設定
+- SendGridのSender Authenticationを設定
+    - チュートリアルどおりに設定する
+
+### 8. Inbound Parse Webhookの設定
+- webhookの設定
+    - Receive Domain: mail.oootaiji.com
+    - Check incoming emails for spam: `off`
+    - POST the raw, full MIME message: `off`
+    - URL: `https://webhook.ogawa.allabout.oootaiji.com/receive`
+
+### 9. メール受信のためのDNS設定
+- mxレコードを追加
+
+
 
 
 ## デプロイ
@@ -162,14 +188,20 @@ https://githubactions.ogawa.allabout.oootaiji.com
 - Web公開確認
 
     ```
-    https://githubactions.ogawa.allabout.oootaiji.com/
+    https://webhook.ogawa.allabout.oootaiji.com/
     ```
 
 
+## メモ
+### Inbound Parse Webhookの設定項目
+- Check incoming emails for spam: `onにするとspamのreportやscoreをデータとして送ってくれる`
+- POST the raw, full MIME message: `onにするとhederなどのデータもそのまま送ってくれる`
+
+
 ## 参考
-- [Github Actions](https://docs.github.com/ja/actions)
-- [Workflowの書き方一覧](https://docs.github.com/ja/actions/using-workflows/workflow-syntax-for-github-actions)
-- [CircleCIからGithub Actionsへ移行](https://docs.github.com/ja/actions/migrating-to-github-actions/migrating-from-circleci-to-github-actions)
-- [Composite Action](https://zenn.dev/tmrekk/articles/5fef57be891040)
-- [compsiteで環境変数](https://zenn.dev/noraworld/articles/github-actions-env-bug)
-- [jsonを使ったgkeの認証](https://githubactions.ogawa.allabout.oootaiji.com/)
+- メール送信
+    - [SendGrid PHP SDKの使用例](https://github.com/sendgrid/sendgrid-php/blob/main/USE_CASES.md)
+- メール受信
+    - [webhookの設定項目の参考にした](https://qiita.com/yaasita/items/a0747bb351dcd851aff6)
+    - [Webhookのドキュメント](https://sendgrid.kke.co.jp/docs/API_Reference/Webhooks/parse.html)
+    - [Inbound parse webhookの中身](https://docs.sendgrid.com/for-developers/parsing-email/setting-up-the-inbound-parse-webhook#default-parameters)
