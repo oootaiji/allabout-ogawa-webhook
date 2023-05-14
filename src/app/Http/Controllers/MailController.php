@@ -37,7 +37,11 @@ class MailController extends Controller
     public function receive(Request $request)
     {
         try {
-            Log::debug(json_encode($request->all()));
+            Log::info($request->to);
+            Log::info($request->from);
+            Log::info($request->subject);
+            Log::info($request->text);
+            Log::info($request->html);
 
             if ($request->to == 'noreply@mail.oootaiji.com') {
                 // 転送
