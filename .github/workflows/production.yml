@@ -98,7 +98,7 @@ jobs:
         uses: google-github-actions/get-gke-credentials@v1
         with:
           cluster_name: ${{ env.REPOSITORY_NAME }}
-          location: us-west1
+          location: us-west1-a
 
 
       - name: deploy gke
