@@ -19,4 +19,4 @@ Route::get('/', function () {
 });
 
 Route::get('/mail/send', [MailController::class, 'send']);
-Route::post('/mail/recieve', [MailController::class, 'recieve']);
+Route::post('/mail/receive', [MailController::class, 'receive']);

@@ -34,7 +34,7 @@ class MailController extends Controller
     /**
      * receive
      */
-    public function recieve(Request $request)
+    public function receive(Request $request)
     {
         try {
             Log::debug(json_encode($request->all()));
