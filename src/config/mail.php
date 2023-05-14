@@ -97,7 +97,7 @@ return [
 
     'to' => [
         'contact' => [
-            'adress' => env('MAIL_TO_CONTACT_ADDRESS', ''),
+            'address' => env('MAIL_TO_CONTACT_ADDRESS', ''),
             'name' => env('MAIL_TO_CONTACT_NAME', 'お問い合わせ窓口'),
         ],
     ],
