@@ -15,6 +15,15 @@ inputs:
     default: "true"
     required: true
     description: 'use composer install --no-dev'
+  SENDGRID_API_KEY: 
+    required: true
+    description: 'SENDGRID_API_KEY'
+  MAIL_FROM_ADDRESS: 
+    required: true
+    description: 'MAIL_FROM_ADDRESS'
+  MAIL_TO_CONTACT_ADDRESS: 
+    required: true
+    description: 'MAIL_TO_CONTACT_ADDRESS'
 
 
 runs:
@@ -53,6 +62,9 @@ runs:
       shell: bash
       env:
           APP_KEY: ${{ inputs.APP_KEY }}
+          SENDGRID_API_KEY: ${{ inputs.SENDGRID_API_KEY }}
+          MAIL_FROM_ADDRESS: ${{ inputs.MAIL_FROM_ADDRESS }}
+          MAIL_TO_CONTACT_ADDRESS: ${{ inputs.MAIL_TO_CONTACT_ADDRESS }}
       working-directory: src
     - name: build app - cache composer install
       id: composer-cache
