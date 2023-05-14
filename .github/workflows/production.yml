@@ -112,9 +112,9 @@ jobs:
             envsubst < ingress.yaml > apply/ingress.yaml
             envsubst < cert.yaml > apply/cert.yaml
             envsubst < pod-disruption-budget.yaml > apply/pod-disruption-budget.yaml
-            kubectl apply -f apply/cert.yaml
             kubectl apply -f apply/deployment.yaml
             kubectl apply -f apply/service.yaml
+            kubectl apply -f apply/cert.yaml
             kubectl apply -f apply/ingress.yaml
             kubectl apply -f apply/pod-disruption-budget.yaml
         working-directory: cd/${{ secrets.PRO_APP_ENV }}/manifest
