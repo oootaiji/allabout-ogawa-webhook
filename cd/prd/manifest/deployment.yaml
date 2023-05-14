@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web
   namespace: default
+  name: web
 spec:
   replicas: 2
   strategy:
