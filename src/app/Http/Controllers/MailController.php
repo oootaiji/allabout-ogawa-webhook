@@ -39,33 +39,37 @@ class MailController extends Controller
         try {
 
             Log::info($request->envelope);
-            $envelope = json_decode(json_encode($request->envelope), true);
+            $envelope = json_decode($request->envelope, true);
             if (in_array('noreply@mail.oootaiji.com', $envelope['to'])) {
                 // 転送s
                 SendGrid::send(
                     config('mail.to.contact.address'),
                     "[転送]". $request->subject,
-                    $request->text,
+                    $request->html,
                 );
-                // 自動返信
-                SendGrid::send(
-                    $envelope['from'],
-                    "[自動返信]連絡",
-                    "こちらへメールは返信できません。",
-                );
+                // 自動返信 (自分のドメインは無限ループになるために除外)
+                if (strpos($envelope['from'], '@mail.oootaiji.com') !== false) {
+                    SendGrid::send(
+                        $envelope['from'],
+                        "[自動返信]連絡",
+                        "こちらへメールは返信できません。",
+                    );
+                }
             } else {
                 // 転送
                 SendGrid::send(
                     config('mail.to.contact.address'),
                     "[転送]". $request->subject,
-                    $request->text,
+                    $request->html,
                 );
-                // 自動返信
-                SendGrid::send(
-                    $envelope['from'],
-                    "[自動返信]連絡",
-                    "こちらのメールは自動返信です。担当者からの返信は、しばらくお待ち下さい。",
-                );
+                // 自動返信 (自分のドメインは無限ループになるために除外)
+                if (strpos($envelope['from'], '@mail.oootaiji.com') !== false) {
+                    SendGrid::send(
+                        $envelope['from'],
+                        "[自動返信]連絡",
+                        "こちらのメールは自動返信です。担当者からの返信は、しばらくお待ち下さい。",
+                    );
+                }
             }
         } catch (\Throwable $th) {
             Log::error($th->getMessage());
