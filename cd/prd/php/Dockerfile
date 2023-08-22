@@ -42,7 +42,7 @@ COPY ./cd/${APP_ENV}/php/php.ini /usr/local/etc/php/php.ini
 # create apache config symboliclink
 RUN set -x \
   && a2enmod rewrite headers \
-  && a2ensite app 000-default
+  && a2ensite app 000-default healthcheck
 
 # healthcheck
 RUN echo '<?php echo "ok"; ?>' > /var/www/html/index.php
