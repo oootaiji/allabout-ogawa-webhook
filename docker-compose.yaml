@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: cd/dev/php
+      args:
+        - APP_ENV=dev
+        - APP_PATH=/var/www/allabout-ogawa-webhook
+        - CIRCLE_PROJECT_REPONAME=allabout-ogawa-webhook
+    ports: 
+      - 8082:80
+    volumes:
+      - ./:/var/www/allabout-ogawa-webhook
+    working_dir: /var/www/allabout-ogawa-webhook
+    privileged: true
+    environment:
+      TZ: Asia/Tokyo
+    tty: true
+
+    
+  db:
+    build: cd/dev/mysql
+    ports:
+      - 3306:3306
+    volumes:
+      - ./cd/dev/mysql:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_PASSWORD: password
+      MYSQL_USER: sail
+      MYSQL_DATABASE: app
+      TZ: Asia/Tokyo
+    
+  
+    
