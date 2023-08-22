@@ -1,2 +1,4 @@
 !.gitignore
+.env
 allabout-kubernetes-service-account.json
+o-taiji-20e6b86c34d5.json
